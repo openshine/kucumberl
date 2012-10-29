@@ -1,0 +1,11 @@
+{application, kucumberl,
+ [
+  {description, "An implementation of Cucumber."},
+  {vsn, "0.0.1"},
+  {applications, [
+                  kernel,
+                  stdlib
+                 ]},
+  {registered, []},
+  {env, []}
+ ]}.
