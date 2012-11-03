@@ -5,4 +5,4 @@
 -export([main/1]).
 
 main(_Args) ->
-    ok.
+    kucumberl_cli:main(_Args).

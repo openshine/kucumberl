@@ -1,0 +1,2 @@
+-record(scenario, {type, desc, actions = []}).
+-record(feature, {path, desc, background = [], scenarios = []}).
