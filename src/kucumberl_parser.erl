@@ -270,6 +270,33 @@ process_stage(table_row, Ctx, Info) ->
 	    NewScenario = Scenario#scenario{examples = NewExamples},
 	    NewResult = Ctx#fparser_ctx.result#feature{scenarios = lists:reverse([NewScenario] ++ SRest)},
 	    Ctx#fparser_ctx{result = NewResult};
+	[feature, Scn, S]
+	  when S =:= given_step;
+	       S =:= when_step;
+	       S =:= then_step;
+	       S =:= and_step ->
+	    RowCells = string:tokens(Info, "|"),
+	    StripFunc =
+		fun (I, L) ->
+			L ++ [string:strip(I, both)]
+		end,
+	    RowCells1 = lists:foldl(StripFunc, [], RowCells),
+	    case Scn of
+		scenario ->
+		    [Scenario|SRest] = lists:reverse(Ctx#fparser_ctx.result#feature.scenarios),
+		    [Action|ARest] = lists:reverse(Scenario#scenario.actions),
+		    NewAction = Action#action{table = Action#action.table ++ [RowCells1]},
+		    NewScenario = Scenario#scenario{actions = lists:reverse([NewAction] ++ ARest)},
+		    NewResult = Ctx#fparser_ctx.result#feature{scenarios = lists:reverse([NewScenario] ++ SRest)},
+		    Ctx#fparser_ctx{result = NewResult};
+		background ->
+		    Scenario = Ctx#fparser_ctx.result#feature.background,
+		    [Action|ARest] = lists:reverse(Scenario#scenario.actions),
+		    NewAction = Action#action{table = Action#action.table ++ [RowCells1]},
+		    NewScenario = Scenario#scenario{actions = lists:reverse([NewAction] ++ ARest)},
+		    NewResult = Ctx#fparser_ctx.result#feature{background = NewScenario},
+		    Ctx#fparser_ctx{result = NewResult}
+	    end;
 	_ ->
 	    {error, format_perror(Ctx, "Can't use table row here", [])}
     end;
