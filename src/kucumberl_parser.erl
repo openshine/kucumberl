@@ -80,6 +80,10 @@ parse_lines(Ctx, [Line|Rest]) ->
 		   process_stage({step, and_step}, Ctx1, Info);
 	       {table_row,    Info} ->
 		   process_stage(table_row, Ctx1, Info);
+	       {ml_text,      Info} ->
+		   process_stage(ml_text, Ctx1, Info);
+	       {str,          Info} ->
+		   process_stage(str, Ctx1, Info);
 	       {comment} ->
 		   Ctx1;
 	       _ ->
@@ -97,7 +101,10 @@ process_line(Line) ->
 			so_example,
 			gwta_step,
 			table_row,
-			comment]).
+			ml_text,
+			comment,
+			str
+		        ]).
 
 process_line(Line, [MatchF|RestF]) ->
     case match_line(MatchF, Line) of
@@ -164,11 +171,20 @@ match_line(table_row, Line) ->
 	{match,[[VALUE]]} -> {ok, {table_row, VALUE}};
 	_ -> pass
     end;
+match_line(ml_text, Line) ->
+    case re:run(Line,
+		"^(?<VALUE>\s+)\"\"\"\s*$",
+		[global,{capture, [1], list},unicode]) of
+	{match,[[VALUE]]} -> {ok, {ml_text, VALUE}};
+	_ -> pass
+    end;
 match_line(comment, Line) ->
     case re:run(Line, "^#.*$") of
 	{match, _} -> {ok, {comment}};
 	_ -> pass
     end;
+match_line(str, Line) ->
+    {ok, {str,Line}};
 match_line(_, _Line) -> pass.
 
 format_perror(Ctx, Str, Data) ->
@@ -180,8 +196,8 @@ scope_push(Ctx, Level) ->
     Ctx#fparser_ctx{scope = Ctx#fparser_ctx.scope ++ [Level]}.
 scope_set(Ctx, NewScope) ->
     Ctx#fparser_ctx{scope = NewScope}.
-%% scope_pop (Ctx) ->
-%%     Ctx#fparser_ctx{scope = lists:reverse(tl(lists:reverse(Ctx#fparser_ctx.scope)))}.
+scope_pop (Ctx) ->
+    Ctx#fparser_ctx{scope = lists:reverse(tl(lists:reverse(Ctx#fparser_ctx.scope)))}.
 scope_get (Ctx) -> Ctx#fparser_ctx.scope.
 scope_get_last (Ctx) ->
     case lists:reverse(scope_get(Ctx)) of
@@ -282,7 +298,8 @@ process_stage(table_row, Ctx, Info) ->
 		end,
 	    RowCells1 = lists:foldl(StripFunc, [], RowCells),
 	    case Scn of
-		scenario ->
+		X when X =:= scenario;
+		       X =:= scenario_out ->
 		    [Scenario|SRest] = lists:reverse(Ctx#fparser_ctx.result#feature.scenarios),
 		    [Action|ARest] = lists:reverse(Scenario#scenario.actions),
 		    NewAction = Action#action{table = Action#action.table ++ [RowCells1]},
@@ -299,6 +316,55 @@ process_stage(table_row, Ctx, Info) ->
 	    end;
 	_ ->
 	    {error, format_perror(Ctx, "Can't use table row here", [])}
+    end;
+process_stage(ml_text, Ctx, Info) ->
+    case scope_get_last(Ctx) of
+	S when S =:= given_step;
+	       S =:= when_step;
+	       S =:= then_step;
+	       S =:= and_step ->
+	    scope_push(Ctx, [ml_text, Info]);
+
+	[ml_text, _] ->
+	    scope_pop(Ctx)
+    end;
+process_stage(str, Ctx, Info) ->
+    case scope_get(Ctx) of
+	[feature, Scn, S, [ml_text, T]]
+	  when S =:= given_step;
+	       S =:= when_step;
+	       S =:= then_step;
+	       S =:= and_step ->
+	    Str = case re:run(Info,
+			      "^" ++ T ++ "(?<VALUE>.*)$",
+			      [global,{capture, [1], list},unicode]) of
+		      {match,[[VALUE]]} -> VALUE;
+		      _ -> Info
+		  end,
+	    case Scn of
+		background ->
+		    Scenario = Ctx#fparser_ctx.result#feature.background,
+		    [Action|ARest] = lists:reverse(Scenario#scenario.actions),
+		    NewAction = case Action#action.text of
+				    "" -> Action#action{text = Str};
+				    _  -> Action#action{text = Action#action.text ++ "\n" ++ Str}
+				end,
+		    NewScenario = Scenario#scenario{actions = lists:reverse([NewAction] ++ ARest)},
+		    NewResult = Ctx#fparser_ctx.result#feature{background = NewScenario},
+		    Ctx#fparser_ctx{result = NewResult};
+		X when X =:= scenario;
+		       X =:= scenario_out->
+		    [Scenario|SRest] = lists:reverse(Ctx#fparser_ctx.result#feature.scenarios),
+		    [Action|ARest] = lists:reverse(Scenario#scenario.actions),
+		    NewAction = case Action#action.text of
+				    "" -> Action#action{text = Str};
+				    _  -> Action#action{text = Action#action.text ++ "\n" ++ Str}
+				end,
+		    NewScenario = Scenario#scenario{actions = lists:reverse([NewAction] ++ ARest)},
+		    NewResult = Ctx#fparser_ctx.result#feature{scenarios = lists:reverse([NewScenario] ++ SRest)},
+		    Ctx#fparser_ctx{result = NewResult}
+	    end;
+	_ -> Ctx
     end;
 process_stage(_, Ctx, _Info) ->
     Ctx.
