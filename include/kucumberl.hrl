@@ -1,2 +1,3 @@
+-record(action, {step, desc, line, text="", table=[]}).
 -record(scenario, {type, desc, actions = [], examples = []}).
 -record(feature, {path, desc, background = [], scenarios = []}).

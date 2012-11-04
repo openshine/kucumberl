@@ -282,7 +282,7 @@ store_step({_, and_step, []}, Ctx, _Info) ->
 store_step({background, S, _R}, Ctx,  Info) ->
     Ctx1 = scope_set(Ctx, [feature, background, S]),
     Actions = Ctx1#fparser_ctx.result#feature.background#scenario.actions,
-    NewActions = Actions ++ [[S, Info, Ctx1#fparser_ctx.line]],
+    NewActions = Actions ++ [#action{step=S, desc=Info, line=Ctx1#fparser_ctx.line}],
     NewBackground = Ctx1#fparser_ctx.result#feature.background#scenario{actions=NewActions},
     NewResult = Ctx1#fparser_ctx.result#feature{background = NewBackground},
     Ctx1#fparser_ctx{result = NewResult};
@@ -291,7 +291,7 @@ store_step({scenario, S, _R}, Ctx, Info) ->
     Ctx1 = scope_set(Ctx, [feature, scenario, S]),
     [Scenario|SRest] = lists:reverse(Ctx1#fparser_ctx.result#feature.scenarios),
     Actions = Scenario#scenario.actions,
-    NewActions = Actions ++ [[S, Info, Ctx1#fparser_ctx.line]],
+    NewActions = Actions ++ [#action{step=S, desc=Info, line=Ctx1#fparser_ctx.line}],
     NewScenario = Scenario#scenario{actions = NewActions},
     NewResult = Ctx1#fparser_ctx.result#feature{scenarios = lists:reverse([NewScenario] ++ SRest)},
     Ctx1#fparser_ctx{result = NewResult};
@@ -300,7 +300,7 @@ store_step({scenario_out, S, _R}, Ctx, Info) ->
     Ctx1 = scope_set(Ctx, [feature, scenario_out, S]),
     [Scenario|SRest] = lists:reverse(Ctx1#fparser_ctx.result#feature.scenarios),
     Actions = Scenario#scenario.actions,
-    NewActions = Actions ++ [[S, Info, Ctx1#fparser_ctx.line]],
+    NewActions = Actions ++ [#action{step=S, desc=Info, line=Ctx1#fparser_ctx.line}],
     NewScenario = Scenario#scenario{actions = NewActions},
     NewResult = Ctx1#fparser_ctx.result#feature{scenarios = lists:reverse([NewScenario] ++ SRest)},
     Ctx1#fparser_ctx{result = NewResult}.
