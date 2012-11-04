@@ -1,2 +1,2 @@
--record(scenario, {type, desc, actions = []}).
+-record(scenario, {type, desc, actions = [], examples = []}).
 -record(feature, {path, desc, background = [], scenarios = []}).
