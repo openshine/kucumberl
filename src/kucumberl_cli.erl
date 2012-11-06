@@ -7,6 +7,7 @@
 %%% Created : 30 Oct 2012 by Roberto Majadas <roberto.majadas@openshine.com>
 %%%-------------------------------------------------------------------
 -module(kucumberl_cli).
+-include("kucumberl.hrl").
 
 %% API
 -export([main/1]).
@@ -118,7 +119,7 @@ store_features(Conf, [File|R]) ->
 	no  ->
 	    case kucumberl_parser:parse(File) of
 		{ok, F} ->
-		    NewConf = Conf#conf{features = Conf#conf.features ++ F};
+		    NewConf = Conf#conf{features = Conf#conf.features ++ [F]};
 		{error, Reason} ->
 		    EFile =re:replace(File,
 				      "^" ++ Conf#conf.fdir,
@@ -143,7 +144,18 @@ skip_feature(Conf, F) ->
 	_ -> yes
     end.
 
-task(list, _Conf) ->
-    ok;
+task(list, Conf) ->
+    PrintFeature =
+	fun (F) ->
+		io:format("~s~n",
+			  [
+			   re:replace(F#feature.path,
+				      "^" ++ Conf#conf.fdir,
+				      "")
+			  ]),
+		ok
+	end,
+    lists:foreach (PrintFeature, Conf#conf.features);
+
 task(runtests, _Conf) ->
     ok.
