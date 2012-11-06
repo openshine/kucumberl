@@ -4,5 +4,5 @@
 
 -export([main/1]).
 
-main(_Args) ->
-    kucumberl_cli:main(_Args).
+main(Args) ->
+    kucumberl_cli:main(Args).
