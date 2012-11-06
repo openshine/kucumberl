@@ -32,7 +32,7 @@ parse(File) ->
 	    Lines = re:split(FileContent, "\r\n|\n|\r|\032", [{return, list}]),
 	    case parse_lines(Ctx, Lines) of
 		{error, Reason} -> {error, Reason};
-		Result -> {ok, Result}
+		Result -> {ok, Result#fparser_ctx.result}
 	    end;
 	{error, Reason} ->
 	    io:format("Error reading ~p: '~p'~n", [File, Reason]),
