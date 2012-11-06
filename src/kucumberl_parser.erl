@@ -23,22 +23,7 @@
 %% @spec
 %% @end
 %%--------------------------------------------------------------------
-
-parse (Files) ->
-    lists:foldl(
-      fun (File, FList) ->
-	      case parse_feature(File) of
-		  {ok, F} -> io:format("~p~n", [F]), FList ++ [F];
-		  {error, Reason} -> io:format("~s~n", [Reason]), FList
-	      end
-      end
-      , [], Files).
-
-%%%===================================================================
-%%% Internal functions
-%%%===================================================================
-
-parse_feature(File) ->
+parse(File) ->
     F = #feature{path=File},
     Ctx = #fparser_ctx{result=F},
 
@@ -54,6 +39,9 @@ parse_feature(File) ->
 	    {error, Reason}
     end.
 
+%%%===================================================================
+%%% Internal functions
+%%%===================================================================
 
 parse_lines({error, Reason}, _Rest) -> {error, Reason};
 
