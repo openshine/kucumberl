@@ -321,9 +321,9 @@ log_scenario(Scn) ->
 log_action(Act) ->
     Step = case Act#action.step of
 	       given_step -> "Given " ++ Act#action.desc;
-	       when_step  -> "When" ++ Act#action.desc;
-	       then_step  -> "Then" ++ Act#action.desc;
-	       and_step   -> "And" ++ Act#action.desc
+	       when_step  -> "When " ++ Act#action.desc;
+	       then_step  -> "Then " ++ Act#action.desc;
+	       and_step   -> "And " ++ Act#action.desc
 	   end,
     io:format("    ~s ", [string:left(Step, 60)]).
 
