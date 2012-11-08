@@ -7,3 +7,6 @@ build:
 
 clean:
 	./rebar clean
+
+test:
+	./kucumberl -s fail.feature
