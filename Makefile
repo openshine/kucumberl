@@ -3,10 +3,10 @@
 all: build
 
 build:
-	./rebar compile escriptize
+	@./rebar compile escriptize
 
 clean:
-	./rebar clean
+	@./rebar clean
 
 test:
-	./kucumberl -s fail.feature
+	@./kucumberl -s fail.feature
