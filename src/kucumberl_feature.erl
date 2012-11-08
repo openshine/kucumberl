@@ -25,6 +25,7 @@
 		  stats_steps = 0,
 		  stats_steps_ok = 0,
 		  stats_steps_not_implemented = 0,
+		  stats_steps_disabled = 0,
 		  stats_steps_failed = 0
 		 }).
 -record(code_mods, {ok = [], errors=false}).
@@ -250,7 +251,13 @@ run_action(Ctx, ScnCtx, Act) ->
     log_action(Act),
     case check_step(Ctx, S, Act) of
 	{implemented,Impl} ->
-	    run_step(Ctx, S, Act, Impl);
+	    case S#scn_ctx.status of
+		ok -> run_step(Ctx, S, Act, Impl);
+		_  ->
+		    log_action_disabled(),
+		    S#scn_ctx{stats_steps = S#scn_ctx.stats_steps + 1,
+			      stats_steps_disabled = S#scn_ctx.stats_steps_disabled + 1}
+	    end;
 	not_implemented ->
 	    log_action_not_impl(),
 	    S#scn_ctx{stats_steps = S#scn_ctx.stats_steps + 1,
@@ -344,6 +351,7 @@ log_action(Act) ->
 
 log_action_not_impl() -> io:format("Not implemented~n").
 log_action_ok() -> io:format("OK~n").
-log_action_failed(Reason) -> 
+log_action_failed(Reason) ->
     io:format("Fail!\n"),
     io:format("      \\_Reason: '~s'~n~n", [Reason]).
+log_action_disabled() -> io:format("Disabled~n").
