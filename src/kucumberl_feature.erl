@@ -321,7 +321,8 @@ run_step(_Ctx, ScnCtx, Act, {Mod, Re}) ->
 			  };
 	{failed, Reason} ->
 	    log_action_failed(Reason),
-	    ScnCtx#scn_ctx{stats_steps = ScnCtx#scn_ctx.stats_steps + 1,
+	    ScnCtx#scn_ctx{status=failed,
+			   stats_steps = ScnCtx#scn_ctx.stats_steps + 1,
 			   stats_steps_failed = ScnCtx#scn_ctx.stats_steps_failed + 1
 			  }
     end.
@@ -343,4 +344,6 @@ log_action(Act) ->
 
 log_action_not_impl() -> io:format("Not implemented~n").
 log_action_ok() -> io:format("OK~n").
-log_action_failed(Reason) -> io:format("Failed (~s)~n", [Reason]).
+log_action_failed(Reason) -> 
+    io:format("Fail!\n"),
+    io:format("      \\_Reason: '~s'~n~n", [Reason]).
