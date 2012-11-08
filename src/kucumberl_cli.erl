@@ -27,7 +27,7 @@
 %%%===================================================================
 
 
-main([]) -> usage();
+%%main([]) -> usage();
 main(Args) ->
     OptSpecList = option_spec_list(),
 
@@ -44,7 +44,7 @@ main(Args) ->
 		    usage(OptSpecList);
 		list ->
 		    task(list, Conf);
-		runttest ->
+		runtests ->
 		    task(runtests, Conf);
 		_ -> ignoreit
 	    end;
@@ -56,9 +56,6 @@ main(Args) ->
 %%===================================================================
 %% Internal functions
 %%===================================================================
-
-usage() ->
-    usage(option_spec_list()).
 
 usage(OptSpecList) ->
     getopt:usage(OptSpecList,
@@ -157,5 +154,7 @@ task(list, Conf) ->
 	end,
     lists:foreach (PrintFeature, Conf#conf.features);
 
-task(runtests, _Conf) ->
-    ok.
+task(runtests, Conf) ->
+    lists:foldl(fun(F, L) -> L ++ [kucumberl_feature:run(F)] end,
+		[],
+		Conf#conf.features).
