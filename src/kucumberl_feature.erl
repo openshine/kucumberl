@@ -53,7 +53,10 @@ run(Feature) ->
 %%%===================================================================
 
 clean(Ctx) ->
-    lists:foreach(fun (M) -> code:delete(M) end,
+    lists:foreach(fun (M) ->
+			  code:delete(M),
+			  code:purge(M)
+		  end,
 		  Ctx#feature_ctx.mods#code_mods.ok).
 
 relative_path(P) ->
@@ -233,14 +236,20 @@ setup(Ctx) ->
 
 
 run_feature(Ctx) ->
-    lists:foldl(fun(Scn, C) ->
-			ScnCtx  = run_scenario_setup(C, #scn_ctx{}, Scn),
-			ScnCtx1 = run_scenario(C, ScnCtx, Scn),
-			ScnCtx2 = run_scenario_teardown(C, ScnCtx1, Scn),
-			io:format("~n"),
-			C#feature_ctx{scn_ctxs = C#feature_ctx.scn_ctxs ++ [ScnCtx2]}
-		end,
-		Ctx, Ctx#feature_ctx.feature#feature.scenarios).
+    lists:foldl(
+      fun(Scn, C) ->
+	      case Scn#scenario.type of
+		  scenario ->
+		      ScnCtx  = run_scenario_setup(C, #scn_ctx{}, Scn),
+		      ScnCtx1 = run_scenario(C, ScnCtx, Scn),
+		      ScnCtx2 = run_scenario_teardown(C, ScnCtx1, Scn),
+		      io:format("~n"),
+		      C#feature_ctx{scn_ctxs = C#feature_ctx.scn_ctxs ++ [ScnCtx2]};
+		  scenario_out ->
+		      run_scenario_outline(Scn,C)
+	      end
+      end,
+      Ctx, Ctx#feature_ctx.feature#feature.scenarios).
 
 run_scenario_setup(C, ScnCtx, _Scn) ->
     case C#feature_ctx.setup_mod of
@@ -268,6 +277,48 @@ run_scenario(Ctx, ScnCtx, Scn) ->
 		    [] -> Scn#scenario.actions;
 		    B -> B#scenario.actions ++ Scn#scenario.actions
 		end).
+
+prepare_action(Act, Elems) ->
+    lists:foldl(
+      fun ({K,V}, A) ->
+	      NewDesc = re:replace(A#action.desc,
+				   "<" ++ K ++ ">",
+				   V,
+				   [{return, list}]),
+	      A#action{desc = NewDesc}
+      end, Act, Elems).
+
+prepare_scenario_template(Scn, Elems) ->
+    NewActions =
+	lists:foldl(
+	  fun (Act, L) ->
+		  L ++ [prepare_action(Act, Elems)]
+	  end,
+	  [], Scn#scenario.actions),
+    Scn#scenario{actions = NewActions}.
+
+run_scenario_outline_example(C, ScnTemplate, Elems) ->
+    Scn = prepare_scenario_template(ScnTemplate, Elems),
+    ScnCtx  = run_scenario_setup(C, #scn_ctx{}, Scn),
+    ScnCtx1 = run_scenario(C, ScnCtx, Scn),
+    ScnCtx2 = run_scenario_teardown(C, ScnCtx1, Scn),
+    io:format("~n"),
+    C#feature_ctx{scn_ctxs = C#feature_ctx.scn_ctxs ++ [ScnCtx2]}.
+
+run_scenario_outline(Scn, C) ->
+    case Scn#scenario.examples of
+	[] -> C#feature_ctx{scn_ctxs = C#feature_ctx.scn_ctxs ++ [#scn_ctx{}]};
+	[H|Rows] ->
+	    lists:foldl(
+	      fun(R, Ctx) ->
+		      try lists:zip(H, R) of
+			  Elems -> run_scenario_outline_example(Ctx, Scn, Elems)
+		      catch
+			  _ -> C#feature_ctx{scn_ctxs = C#feature_ctx.scn_ctxs ++ [#scn_ctx{}]}
+		      end
+	      end,
+	      C, Rows)
+    end.
 
 run_action(Ctx, ScnCtx, Act) ->
     S = case Act#action.step of
