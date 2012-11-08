@@ -119,18 +119,32 @@ load_code_files(Ctx) ->
 extract_regexp_from_stepfile(StepModule, Ctx, Form) ->
     F = fun (I, C) ->
 		case I of
-		    {function,_,S, 3,[{clause, _, [{string,_,R}|_], _, _}]} 
+		    {function,_,S, 3, Clauses}
 		      when S =:= given;
 			   S =:= 'when';
 			   S =:= then ->
-			case S of
-			    given ->
-				C#feature_ctx{step_re = C#feature_ctx.step_re ++ [{given_step, StepModule, R}]};
-			    'when' ->
-				C#feature_ctx{step_re = C#feature_ctx.step_re ++ [{when_step, StepModule, R}]};
-			    then ->
-				C#feature_ctx{step_re = C#feature_ctx.step_re ++ [{then_step, StepModule, R}]}
-			end;
+
+			StoreRe =
+			    fun (Sx, CC, R) ->
+				    CC#feature_ctx{step_re = CC#feature_ctx.step_re
+						   ++ [{Sx, StepModule, R}]}
+			    end,
+
+			ClauseFunc =
+			    fun (Clause, CC) ->
+				    case Clause of
+				    	{clause, _, [{string,_,R}|_], _, _} ->
+				    	    case S of
+				    		given ->
+				    		    StoreRe(given_step, CC, R);
+				    		'when' ->
+				    		    StoreRe(when_step, CC, R);
+				    		then ->
+				    		    StoreRe(then_step, CC, R)
+				    	    end
+				    end
+			    end,
+			lists:foldl(ClauseFunc, C, Clauses);
 		    _ -> C
 		end
 	end,
