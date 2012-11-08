@@ -42,6 +42,7 @@ run(Feature) ->
     case Ctx#feature_ctx.mods#code_mods.errors of
 	true -> clean(Ctx), {error, Ctx};
 	false ->
+	    log_feature(Ctx),
 	    Ctx1 = run_feature(Ctx),
 	    clean(Ctx1),
 	    {ok, Ctx1}
@@ -207,10 +208,10 @@ setup(Ctx) ->
 
 run_feature(Ctx) ->
     lists:foldl(fun(Scn, C) ->
-			log_feature(C),
 			ScnCtx  = run_scenario_setup(C, #scn_ctx{}, Scn),
 			ScnCtx1 = run_scenario(C, ScnCtx, Scn),
 			ScnCtx2 = run_scenario_teardown(C, ScnCtx1, Scn),
+			io:format("~n"),
 			C#feature_ctx{scn_ctxs = C#feature_ctx.scn_ctxs ++ [ScnCtx2]}
 		end,
 		Ctx, Ctx#feature_ctx.feature#feature.scenarios).
@@ -315,7 +316,7 @@ run_step(_Ctx, ScnCtx, Act, {Mod, Re}) ->
     Result = try ExecStep(ScnCtx#scn_ctx.step_type) of
 		 Val -> Val
 	     catch
-		 _ -> {failed, "Something wrong with this step's code"}
+		 E -> {failed, E}
 	     end,
 
 
