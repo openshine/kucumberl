@@ -199,11 +199,37 @@ set_setup_teardown_funcs(Ctx) ->
 	    Ctx
     end.
 
+load_rest_step_regexp(Ctx) ->
+    StepFiles = get_steps_files(Ctx),
+    FFile = Ctx#feature_ctx.feature#feature.path,
+    StepDir = filename:join([filename:dirname(FFile)] ++ ["step_definitions"]),
+    StepFile = relative_path(filename:join([StepDir] ++ [re:replace(filename:basename(FFile),
+								    ".feature$", ".erl",
+								    [{return, list}])])),
+
+    lists:foldl(
+      fun (F, C) ->
+	      StepModule = list_to_atom(re:replace(filename:basename(F),
+						   ".erl$", "",
+						   [{return, list}])),
+	      case F of
+		  F1 when F1 =:= StepFile -> C;
+		  F2 ->
+		      case epp:parse_file(F2, "", "") of
+			  {ok, Form} ->
+			      extract_regexp_from_stepfile(StepModule, C, Form);
+			  {error, _OpenError} ->
+			      C
+		      end
+	      end
+      end, Ctx, StepFiles).
+
 setup(Ctx) ->
     %% Load code from lib directory
     Ctx1 = load_code_files(Ctx),
     Ctx2 = load_step_regexp(Ctx1),
-    set_setup_teardown_funcs(Ctx2).
+    Ctx3 = load_rest_step_regexp(Ctx2),
+    set_setup_teardown_funcs(Ctx3).
 
 
 run_feature(Ctx) ->
