@@ -1,4 +1,4 @@
--module(simple_sample).
+-module(simple_calc).
 
 -export([setup/0, teardown/0, given/3, 'when'/3, then/3]).
 
