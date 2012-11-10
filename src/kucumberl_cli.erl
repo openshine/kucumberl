@@ -166,6 +166,13 @@ task(list, Conf) ->
     lists:foreach (PrintFeature, Conf#conf.features);
 
 task(runtests, Conf) ->
+    Features = lists:foldl(
+    		 fun(F, L) ->
+			 case kucumberl_feature_code:setup(F) of
+			     {ok, NF} -> L ++ [NF];
+			     _ -> L
+			 end
+    		 end, [], Conf#conf.features),
     lists:foldl(fun(F, L) -> L ++ [kucumberl_feature:run(F)] end,
 		[],
-		Conf#conf.features).
+		Features).
