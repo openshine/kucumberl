@@ -337,18 +337,17 @@ run_action(Ctx, ScnCtx, Act) ->
 	    _ -> ScnCtx#scn_ctx{step_type = Act#action.step}
 	end,
 
-    log_action(Act),
     case check_step(Ctx, S, Act) of
 	{implemented,Impl} ->
 	    case S#scn_ctx.status of
 		ok -> run_step(Ctx, S, Act, Impl);
 		_  ->
-		    log_action_disabled(),
+		    log_action_disabled(Act),
 		    S#scn_ctx{stats_steps = S#scn_ctx.stats_steps + 1,
 			      stats_steps_disabled = S#scn_ctx.stats_steps_disabled + 1}
 	    end;
 	not_implemented ->
-	    log_action_not_impl(),
+	    log_action_not_impl(Act),
 	    S#scn_ctx{stats_steps = S#scn_ctx.stats_steps + 1,
 		      stats_steps_not_implemented = S#scn_ctx.stats_steps_not_implemented + 1}
     end.
@@ -410,13 +409,13 @@ run_step(_Ctx, ScnCtx, Act, {Mod, Re}) ->
 
     case Result of
 	{ok, State} ->
-	    log_action_ok(),
+	    log_action_ok(Act),
 	    ScnCtx#scn_ctx{state = State,
 			   stats_steps = ScnCtx#scn_ctx.stats_steps + 1,
 			   stats_steps_ok = ScnCtx#scn_ctx.stats_steps_ok + 1
 			  };
 	{failed, Reason} ->
-	    log_action_failed(Reason),
+	    log_action_failed(Act, Reason),
 	    ScnCtx#scn_ctx{status=failed,
 			   stats_steps = ScnCtx#scn_ctx.stats_steps + 1,
 			   stats_steps_failed = ScnCtx#scn_ctx.stats_steps_failed + 1
@@ -438,9 +437,19 @@ log_action(Act) ->
 	   end,
     io:format("    ~s ", [string:left(Step, 60)]).
 
-log_action_not_impl() -> io:format("Not implemented~n").
-log_action_ok() -> io:format("OK~n").
-log_action_failed(Reason) ->
+log_action_not_impl(Act) -> 
+    log_action(Act),
+    io:format("Not implemented~n").
+
+log_action_ok(Act) -> 
+    log_action(Act),
+    io:format("OK~n").
+
+log_action_failed(Act, Reason) ->
+    log_action(Act),
     io:format("Fail!\n"),
     io:format("      \\_Reason: '~s'~n~n", [Reason]).
-log_action_disabled() -> io:format("Disabled~n").
+
+log_action_disabled(Act) ->
+    log_action(Act),
+    io:format("Disabled~n").
