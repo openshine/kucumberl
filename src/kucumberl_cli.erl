@@ -40,6 +40,8 @@
 
 %%main([]) -> usage();
 main(Args) ->
+    ets:new(kctx, [set, named_table, public]),
+
     OptSpecList = option_spec_list(),
 
     case getopt:parse(OptSpecList, Args) of
