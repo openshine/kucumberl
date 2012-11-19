@@ -1,6 +1,6 @@
 -record(action, {step, desc, line, text="", table=[]}).
 -record(scenario, {type, desc, actions = [], examples = []}).
--record(feature, {path, desc, background = [], scenarios = [], fcode = []}).
+-record(feature, {id, path, desc, background = [], scenarios = [], fcode = []}).
 
 -record(module, {path, mod = [], warnings = [], errors = []}).
 -record(feature_code, {
