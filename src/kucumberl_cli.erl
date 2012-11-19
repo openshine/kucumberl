@@ -117,29 +117,33 @@ store_conf(Conf, []) ->
 					      [F | Acc]
 				      end,
 				      []),
-    store_features(Conf1, FeatureFiles).
+    store_features(Conf1, 1, FeatureFiles).
 
-store_features(Conf, [File|R]) ->
+store_features(Conf, ID, [File|R]) ->
     case skip_feature(Conf, File) of
 	yes ->
 	    io:format("SKIP ~s~n", [re:replace(File,
 				      "^" ++ Conf#conf.fdir,
 				      "")]),
+	    NextID = ID,
 	    NewConf = Conf;
 	no  ->
 	    case kucumberl_parser:parse(File) of
 		{ok, F} ->
-		    NewConf = Conf#conf{features = Conf#conf.features ++ [F]};
+		    F1 = F#feature{id = ID},
+		    NextID = ID + 1,
+		    NewConf = Conf#conf{features = Conf#conf.features ++ [F1]};
 		{error, Reason} ->
 		    EFile =re:replace(File,
 				      "^" ++ Conf#conf.fdir,
 				      ""),
 		    io:format("~s:~n  ~s~n", [EFile, Reason]),
+		    NextID = ID,
 		    NewConf = Conf
 	    end
     end,
-    store_features(NewConf, R);
-store_features(Conf, []) -> Conf.
+    store_features(NewConf, NextID, R);
+store_features(Conf, _, []) -> Conf.
 
 skip_feature(Conf, F) ->
     S = lists:foldl(
