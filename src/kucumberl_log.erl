@@ -24,6 +24,7 @@
 
 %% API
 -export([start_link/0,
+	 set_color/1,
 	 init_feature/1,
 	 init_scenario/1,
 	 end_feature/0,
@@ -50,6 +51,9 @@
 
 start_link() ->
     gen_server:start_link({local, ?SERVER}, ?MODULE, [], []).
+
+set_color(Value) ->
+    gen_server:call(?MODULE, {set_color, Value}).
 
 init_feature(Feature) ->
     gen_server:call(?MODULE, {init_feature, Feature}).
@@ -79,6 +83,15 @@ init([]) ->
 handle_call({init_feature, Feature}, _From, State) ->
     NewState = State#state{feature = Feature},
     print_feature_name(NewState),
+    {reply, ok, NewState};
+
+handle_call({set_color, Value}, _From, State) ->
+    case Value of
+	true ->
+	    NewState = State#state{color = true};
+	false ->
+	    NewState = State#state{color = false}
+    end,
     {reply, ok, NewState};
 
 handle_call({end_feature}, _From, State) ->
