@@ -29,7 +29,9 @@
 
 run(Feature) ->
     kucumberl_feature_code:load(Feature),
+    kucumberl_log:init_feature(Feature),
     F = run_feature(Feature),
+    kucumberl_log:end_feature(),
     kucumberl_feature_code:unload(F).
 
 %%%===================================================================
@@ -39,7 +41,10 @@ run(Feature) ->
 run_feature(Feature) ->
     lists:foldl(
       fun(ScnID, F) ->
-	      kucumberl_feature_scn:run(F, ScnID)
+	      kucumberl_log:init_scenario(ScnID),
+	      F = kucumberl_feature_scn:run(F, ScnID),
+	      kucumberl_log:end_scenario(),
+	      F
       end,
       Feature,
       lists:seq(1, length(Feature#feature.scenarios))).

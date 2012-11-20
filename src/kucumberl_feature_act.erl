@@ -46,9 +46,15 @@ run(F, {teardown, ScnID, EID}) ->
     ets:insert(kctx, {{F#feature.id, teardown, ScnID, EID}, ok}),
     F;
 run(F, {background, ScnID, EID, ActID}) ->
-    run_step(F, {background, ScnID, EID, ActID});
+    kucumberl_log:emit(init_step, {background, ScnID, EID, ActID}),
+    F = run_step(F, {background, ScnID, EID, ActID}),
+    kucumberl_log:emit(end_step, {background, ScnID, EID, ActID}),
+    F;
 run(F, {normal, ScnID, EID, ActID}) ->
-    run_step(F, {normal, ScnID, EID, ActID});
+    kucumberl_log:emit(init_step, {normal, ScnID, EID, ActID}),
+    F = run_step(F, {normal, ScnID, EID, ActID}),
+    kucumberl_log:emit(end_step, {normal, ScnID, EID, ActID}),
+    F;
 run(F,_) -> F.
 
 
@@ -79,7 +85,7 @@ run_step(F, {ScnType, ScnID, EID, ActID}) ->
 
     case find_step_handlers(F, ScnID, EID, Step, Act) of
 	[] ->
-	    io:format("F: ~p Scn: ~p E: ~p T: ~p Act: ~p NO HANDLERS~n", [F#feature.id, ScnID, EID, ScnType, ActID]),
+	    %%io:format("F: ~p Scn: ~p E: ~p T: ~p Act: ~p NO HANDLERS~n", [F#feature.id, ScnID, EID, ScnType, ActID]),
 	    ets:insert(kctx, {{F#feature.id, status, ScnID, EID}, disabled}),
 	    ets:insert(kctx, {{F#feature.id, ScnType, ScnID, EID, ActID}, not_implementated});
 	[StepImpl|_] ->
@@ -89,22 +95,22 @@ run_step(F, {ScnType, ScnID, EID, ActID}) ->
 		    Params = prepare_step_params(F, ScnID, EID, Act, Re),
 		    case exec_step(Step, Mod, Re, State, Params) of
 			{ok, NewState} ->
-			    io:format("F: ~p Scn: ~p E: ~p T: ~p Act: ~p OK~n", [F#feature.id, ScnID, EID, ScnType, ActID]),
+			    %%io:format("F: ~p Scn: ~p E: ~p T: ~p Act: ~p OK~n", [F#feature.id, ScnID, EID, ScnType, ActID]),
 			    ets:insert(kctx, {{F#feature.id, status, ScnID, EID}, ok}),
 			    ets:insert(kctx, {{F#feature.id, state,  ScnID, EID}, NewState}),
 			    ets:insert(kctx, {{F#feature.id, ScnType, ScnID, EID, ActID}, ok});
 			{failed, Reason} ->
-			    io:format("F: ~p Scn: ~p E: ~p T: ~p Act: ~p Fail~n", [F#feature.id, ScnID, EID, ScnType, ActID]),
+			    %%io:format("F: ~p Scn: ~p E: ~p T: ~p Act: ~p Fail~n", [F#feature.id, ScnID, EID, ScnType, ActID]),
 			    ets:insert(kctx, {{F#feature.id, status, ScnID, EID}, failed}),
 			    ets:insert(kctx, {{F#feature.id, ScnType, ScnID, EID, ActID}, {failed, Reason}});
 			_ ->
-			    io:format("F: ~p Scn: ~p E: ~p T: ~p Act: ~p Fail~n", [F#feature.id, ScnID, EID, ScnType, ActID]),
+			    %%io:format("F: ~p Scn: ~p E: ~p T: ~p Act: ~p Fail~n", [F#feature.id, ScnID, EID, ScnType, ActID]),
 			    ets:insert(kctx, {{F#feature.id, status, ScnID, EID}, failed}),
 			    ets:insert(kctx, {{F#feature.id, ScnType, ScnID, EID, ActID},
 					      {failed, "Wrong value returned"}})
 		    end;
 		_ ->
-		    io:format("F: ~p Scn: ~p E: ~p T: ~p Act: ~p Disabled~n", [F#feature.id, ScnID, EID, ScnType, ActID]),
+		    %%io:format("F: ~p Scn: ~p E: ~p T: ~p Act: ~p Disabled~n", [F#feature.id, ScnID, EID, ScnType, ActID]),
 		    ets:insert(kctx, {{F#feature.id, ScnType, ScnID, EID, ActID}, disabled})
 	    end
     end,

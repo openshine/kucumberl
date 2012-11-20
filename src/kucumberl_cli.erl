@@ -41,6 +41,7 @@
 %%main([]) -> usage();
 main(Args) ->
     ets:new(kctx, [set, named_table, public]),
+    kucumberl_log:start_link(),
 
     OptSpecList = option_spec_list(),
 
