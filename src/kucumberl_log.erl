@@ -200,6 +200,15 @@ print_step_extra_data(Type, State, ScnID, EID, ActID, Act) ->
 	       end,
 	       re:split(T, "\r\n|\n|\r|\032", [{return, list}])),
 	     io:format("~s \"\"\"~n", [S1++SE])
+    end,
+
+    case Act#action.tabletxt of
+	"" -> ignoreit;
+	TT -> lists:foreach(
+	       fun (L) ->
+		       io:format("~s |~s|~n", [S1++SE, L])
+	       end,
+	      re:split(TT, "\r\n|\n|\r|\032", [{return, list}]))
     end.
 
 
