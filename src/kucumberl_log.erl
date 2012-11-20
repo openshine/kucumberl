@@ -287,8 +287,8 @@ print_full_stats(St) ->
 
     io:format("~p Scenario (~s, ~s)~n",
 	      [ScnFailed+ScnPassed,
-	       stats_failed_str(St, StepsFailed),
-	       stats_ok_str(St, StepsPassed)]),
+	       stats_failed_str(St, ScnFailed),
+	       stats_ok_str(St, ScnPassed)]),
 
     io:format("~p Steps (~s, ~s, ~s, ~s)~n",
 	      [StepsFailed + StepsPassed + StepsSkipped + StepsNI,
