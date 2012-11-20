@@ -301,7 +301,13 @@ process_stage(table_row, Ctx, Info) ->
 		       X =:= scenario_out ->
 		    [Scenario|SRest] = lists:reverse(Ctx#fparser_ctx.result#feature.scenarios),
 		    [Action|ARest] = lists:reverse(Scenario#scenario.actions),
-		    NewAction = Action#action{table = Action#action.table ++ [RowCells1]},
+		    NewTableTxt = case Action#action.tabletxt of
+				      "" -> Info;
+				      _ -> Action#action.tabletxt ++ "\n" ++ Info
+				  end,
+		    NewAction = Action#action{table = Action#action.table ++ [RowCells1],
+					      tabletxt = NewTableTxt
+					     },
 		    NewScenario = Scenario#scenario{actions = lists:reverse([NewAction] ++ ARest)},
 		    NewResult = Ctx#fparser_ctx.result#feature{scenarios = lists:reverse([NewScenario] ++ SRest)},
 		    Ctx#fparser_ctx{result = NewResult};

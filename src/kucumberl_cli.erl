@@ -30,7 +30,8 @@
 	       rskip = [],
 	       fdir = [],
 	       task = runtests,
-	       features = []
+	       features = [],
+	       color = true
 	      }).
 
 %%%===================================================================
@@ -40,6 +41,9 @@
 
 %%main([]) -> usage();
 main(Args) ->
+    ets:new(kctx, [set, named_table, public]),
+    kucumberl_log:start_link(),
+
     OptSpecList = option_spec_list(),
 
     case getopt:parse(OptSpecList, Args) of
@@ -49,6 +53,8 @@ main(Args) ->
 	    %% Setup Enviroment
 	    code:add_pathsa(Conf#conf.path_a),
 	    code:add_pathsz(Conf#conf.path_z),
+
+	    kucumberl_log:set_color(Conf#conf.color),
 
 	    case Conf#conf.task of
 		help ->
@@ -84,7 +90,8 @@ option_spec_list() ->
      {skip,        $s,        "skip",        string,                "Skip feature"},
      {rskip,       $r,        "rskip",       string,                "Skip features using regexp"},
      {path_a,      $a,        "pa",          string,                "Adds the specified directories to the beginning of the code path"},
-     {path_z,      $z,        "pz",          string,                "Adds the specified directories to the end of the code path"}
+     {path_z,      $z,        "pz",          string,                "Adds the specified directories to the end of the code path"},
+     {color,       $C,        "color",       {boolean, true},       "Use colors or not (enabled by default)"}
     ].
 
 
@@ -98,6 +105,10 @@ store_conf(Conf, [I|Rest]) ->
 	{path_a, S}  -> NewConf = Conf#conf{path_a = Conf#conf.path_a ++ [S]};
 	{path_z, S}  -> NewConf = Conf#conf{path_z = Conf#conf.path_z ++ [S]};
 	{fdir, S}    -> NewConf = Conf#conf{fdir = S};
+	{color, B}   -> NewConf = case B of
+				      true -> Conf#conf{color = true};
+				      false -> Conf#conf{color = false}
+				  end;
 	_ -> NewConf = Conf
     end,
     store_conf(NewConf, Rest);
@@ -115,29 +126,33 @@ store_conf(Conf, []) ->
 					      [F | Acc]
 				      end,
 				      []),
-    store_features(Conf1, FeatureFiles).
+    store_features(Conf1, 1, FeatureFiles).
 
-store_features(Conf, [File|R]) ->
+store_features(Conf, ID, [File|R]) ->
     case skip_feature(Conf, File) of
 	yes ->
 	    io:format("SKIP ~s~n", [re:replace(File,
 				      "^" ++ Conf#conf.fdir,
 				      "")]),
+	    NextID = ID,
 	    NewConf = Conf;
 	no  ->
 	    case kucumberl_parser:parse(File) of
 		{ok, F} ->
-		    NewConf = Conf#conf{features = Conf#conf.features ++ [F]};
+		    F1 = F#feature{id = ID},
+		    NextID = ID + 1,
+		    NewConf = Conf#conf{features = Conf#conf.features ++ [F1]};
 		{error, Reason} ->
 		    EFile =re:replace(File,
 				      "^" ++ Conf#conf.fdir,
 				      ""),
 		    io:format("~s:~n  ~s~n", [EFile, Reason]),
+		    NextID = ID,
 		    NewConf = Conf
 	    end
     end,
-    store_features(NewConf, R);
-store_features(Conf, []) -> Conf.
+    store_features(NewConf, NextID, R);
+store_features(Conf, _, []) -> Conf.
 
 skip_feature(Conf, F) ->
     S = lists:foldl(
@@ -166,6 +181,15 @@ task(list, Conf) ->
     lists:foreach (PrintFeature, Conf#conf.features);
 
 task(runtests, Conf) ->
+    Features = lists:foldl(
+    		 fun(F, L) ->
+			 case kucumberl_feature_code:setup(F) of
+			     {ok, NF} -> L ++ [NF];
+			     _ -> L
+			 end
+    		 end, [], Conf#conf.features),
     lists:foldl(fun(F, L) -> L ++ [kucumberl_feature:run(F)] end,
 		[],
-		Conf#conf.features).
+		Features),
+    kucumberl_log:print_stats().
+
