@@ -182,4 +182,6 @@ task(runtests, Conf) ->
     		 end, [], Conf#conf.features),
     lists:foldl(fun(F, L) -> L ++ [kucumberl_feature:run(F)] end,
 		[],
-		Features).
+		Features),
+    kucumberl_log:print_stats().
+

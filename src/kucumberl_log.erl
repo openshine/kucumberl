@@ -28,7 +28,8 @@
 	 init_scenario/1,
 	 end_feature/0,
 	 end_scenario/0,
-	 emit/2
+	 emit/2,
+	 print_stats/0
 	]).
 
 %% gen_server callbacks
@@ -65,6 +66,9 @@ end_scenario() ->
 emit(Event, Params) ->
     gen_server:call(?MODULE, {event, Event, Params}).
 
+print_stats() ->
+    gen_server:call(?MODULE, {print_stats}).
+
 %%%===================================================================
 %%% gen_server callbacks
 %%%===================================================================
@@ -93,6 +97,10 @@ handle_call({end_scenario}, _From, State) ->
 
 handle_call({event, Event, Params}, _From, State) ->
     print_event(State, Event, Params),
+    {reply, ok, State};
+
+handle_call({print_stats}, _From, State) ->
+    print_full_stats(State),
     {reply, ok, State};
 
 handle_call(_Request, _From, State) ->
@@ -256,6 +264,29 @@ example_str(Type, State, ScnID, EID, ActID, _Act) ->
 	     end
     end.
 
+print_full_stats(St) ->
+    ScnFailed = length(ets:match(kctx, {{'$1', status, '$2', '$3'}, failed})),
+    ScnPassed = length(ets:match(kctx, {{'$1', status, '$2', '$3'}, ok})),
+    StepsFailed = length(ets:match(kctx, {{'$1', '$2', '$3', '$4', '$5'}, {failed, '_'}})),
+    StepsPassed = length(ets:match(kctx, {{'$1', '$2', '$3', '$4', '$5'}, ok})),
+    StepsSkipped = length(ets:match(kctx, {{'$1', '$2', '$3', '$4', '$5'}, disabled})),
+    StepsNI = length(ets:match(kctx, {{'$1', '$2', '$3', '$4', '$5'}, not_implementated})),
+
+    io:format("~p Scenario (~s, ~s)~n",
+	      [ScnFailed+ScnPassed,
+	       stats_failed_str(St, StepsFailed),
+	       stats_ok_str(St, StepsPassed)]),
+
+    io:format("~p Steps (~s, ~s, ~s, ~s)~n",
+	      [StepsFailed + StepsPassed + StepsSkipped + StepsNI,
+	       stats_failed_str(St, StepsFailed),
+	       stats_ok_str(St, StepsPassed),
+	       stats_disabled_str(St, StepsSkipped),
+	       stats_ni_str(St, StepsNI)
+	      ]).
+
+
+
 esc_helper(save_cursor) -> "\e[s";
 esc_helper(restore_cursor) -> "\e[u";
 esc_helper(erase_line) -> "\e[2K";
@@ -273,6 +304,26 @@ ok_str(St) -> case St#state.color of true -> "\e[32mOK\e[0m"; _ -> "OK" end.
 disabled_str(St) -> case St#state.color of true -> "\e[34mSkipped\e[0m"; _ -> "Skipped" end.
 not_impl_str(St) -> case St#state.color of true -> "\e[35mNot implementated\e[0m"; _ -> "Not implementated" end.
 failed_str(St) -> case St#state.color of true -> "\e[31mFAILED\e[0m"; _ -> "FAILED" end.
+
+stats_failed_str(St,Num) -> case St#state.color of
+			     true -> "\e[31m" ++ integer_to_list(Num) ++" failed"++"\e[0m";
+			     _ ->  integer_to_list(Num) ++" failed"
+			 end.
+stats_ok_str(St,Num) ->
+    case St#state.color of
+	true -> "\e[32m" ++ integer_to_list(Num) ++" passed"++"\e[0m";
+	_ ->  integer_to_list(Num) ++" passed"
+    end.
+stats_disabled_str(St,Num) ->
+    case St#state.color of
+	true -> "\e[34m" ++ integer_to_list(Num) ++" skipped"++"\e[0m";
+	_ ->  integer_to_list(Num) ++" skipped"
+    end.
+stats_ni_str(St,Num) ->
+    case St#state.color of
+	true -> "\e[35m" ++ integer_to_list(Num) ++" not implementated"++"\e[0m";
+	_ ->  integer_to_list(Num) ++" not implementated"
+    end.
 
 step2str(Type) ->
     case Type of
