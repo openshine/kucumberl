@@ -172,7 +172,8 @@ print_event(State, end_step, {Type, ScnID, EID, ActID}) ->
 		    Scn#scenario.actions),
     PAct = prepare_act(Scn, EID, Act),
     print_step_with_result(Type, State, ScnID, EID, ActID, PAct),
-    print_step_extra_data(Type, State, ScnID, EID, ActID, PAct);
+    print_step_extra_data(Type, State, ScnID, EID, ActID, PAct),
+    print_step_errors(Type, State, ScnID, EID, ActID, PAct);
 
 print_event(_,_,_) -> ignoreit.
 
@@ -232,6 +233,20 @@ print_step_extra_data(Type, State, ScnID, EID, ActID, Act) ->
 	      re:split(TT, "\r\n|\n|\r|\032", [{return, list}]))
     end.
 
+print_step_errors(Type, State, ScnID, EID, ActID, Act) ->
+    FID = State#state.feature#feature.id,
+    case ets:match(kctx, {{FID, Type, ScnID, EID, ActID}, {failed, '$1'}}) of
+	[] -> ignoreit;
+	[E] ->
+	    S1 = tab_level(2),
+	    SE = example_str(Type, State, ScnID, EID, ActID, Act),
+	    case State#state.color of
+		true ->
+		    io:format("~s\e[31m [E] ~s\e[0m~n", [S1++SE, E]);
+		false ->
+		    io:format("~s [E] ~s~n", [S1++SE, E])
+	    end
+    end.
 
 prepare_act(Scn, EID, Act) ->
     case Scn#scenario.examples of
