@@ -126,7 +126,7 @@ store_conf(Conf, []) ->
 					      [F | Acc]
 				      end,
 				      []),
-    store_features(Conf1, 1, FeatureFiles).
+    store_features(Conf1, 1, lists:sort(FeatureFiles)).
 
 store_features(Conf, ID, [File|R]) ->
     case skip_feature(Conf, File) of
