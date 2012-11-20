@@ -150,7 +150,8 @@ print_event(State, end_step, {Type, ScnID, EID, ActID}) ->
     Act = lists:nth(ActID,
 		    Scn#scenario.actions),
     PAct = prepare_act(Scn, EID, Act),
-    print_step_with_result(Type, State, ScnID, EID, ActID, PAct);
+    print_step_with_result(Type, State, ScnID, EID, ActID, PAct),
+    print_step_extra_data(Type, State, ScnID, EID, ActID, PAct);
 
 print_event(_,_,_) -> ignoreit.
 
@@ -185,6 +186,22 @@ print_step_with_result(Type, State, ScnID, EID, ActID, Act) ->
     io:format("~s~s~s~n", [AnsiEsc,
 			   string:left(S1++SE++S2++S3, 65),
 			   SR]).
+
+print_step_extra_data(Type, State, ScnID, EID, ActID, Act) ->
+    S1 = tab_level(2),
+    SE = example_str(Type, State, ScnID, EID, ActID, Act),
+
+    case Act#action.text of
+	[] -> ignoreit;
+	T -> io:format("~s \"\"\"~n", [S1++SE]),
+	     lists:foreach(
+	       fun (L) ->
+		       io:format("~s ~s~n", [S1++SE, L])
+	       end,
+	       re:split(T, "\r\n|\n|\r|\032", [{return, list}])),
+	     io:format("~s \"\"\"~n", [S1++SE])
+    end.
+
 
 prepare_act(Scn, EID, Act) ->
     case Scn#scenario.examples of
