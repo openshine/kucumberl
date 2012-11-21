@@ -300,7 +300,7 @@ print_full_stats(St) ->
     StepsSkipped = length(ets:match(kctx, {{'$1', '$2', '$3', '$4', '$5'}, disabled})),
     StepsNI = length(ets:match(kctx, {{'$1', '$2', '$3', '$4', '$5'}, not_implementated})),
 
-    io:format("~p Scenario (~s, ~s)~n",
+    io:format("~p Scenarios (~s, ~s)~n",
 	      [ScnFailed+ScnPassed,
 	       stats_failed_str(St, ScnFailed),
 	       stats_ok_str(St, ScnPassed)]),
