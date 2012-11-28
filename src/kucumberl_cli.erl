@@ -188,8 +188,12 @@ task(runtests, Conf) ->
 			     _ -> L
 			 end
     		 end, [], Conf#conf.features),
-    lists:foldl(fun(F, L) -> L ++ [kucumberl_feature:run(F)] end,
-		[],
-		Features),
-    kucumberl_log:print_stats().
+    case kucumberl_feature_code:check_errors(Features) of
+	ok ->
+	    lists:foldl(fun(F, L) -> L ++ [kucumberl_feature:run(F)] end,
+			[],
+			Features),
+	    kucumberl_log:print_stats();
+	error -> error
+    end.
 
