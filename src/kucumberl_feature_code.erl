@@ -21,7 +21,7 @@
 -include("kucumberl.hrl").
 
 %% API
--export([setup/1, load/1, unload/1]).
+-export([setup/1, load/1, unload/1, check_errors/1]).
 
 %%%===================================================================
 %%% API
@@ -65,6 +65,56 @@ unload(Feature) ->
 		      end
 	      end
       end, Modules).
+
+check_errors(Features) ->
+    Modules =
+	lists:foldl(
+	  fun(F, Acc) ->
+		  case F#feature.fcode of
+		      [] -> Acc;
+		      FC -> Acc ++ FC#feature_code.modules
+		  end
+	  end, [], Features),
+    ErrMods =
+	lists:foldl(
+	  fun(M, Acc) ->
+		  case lists:keymember(M#module.path, 1, Acc) of
+		      true -> Acc;
+		      false ->
+			  case length(M#module.warnings) + length(M#module.errors) > 0 of
+			      true -> Acc ++ [{M#module.path, M}];
+			      false -> Acc
+			  end
+		  end
+	  end, [], Modules),
+    case ErrMods of
+	[] -> ok;
+	_ ->
+	    lists:foreach(
+	      fun ({Path, M}) ->
+		      io:format("~s~n", [Path]),
+		      lists:foreach(
+			fun({_, E}) ->
+				lists:foreach(
+				  fun ({Line, Mod, Msg}) ->
+					  io:format(" [E.~p] ~s~n", [Line, Mod:format_error(Msg)])
+				  end,
+				  E)
+			end,
+			M#module.errors),
+		      lists:foreach(
+			fun({_, W}) ->
+				lists:foreach(
+				  fun ({Line, Mod, Msg}) ->
+					  io:format(" [W.~p] ~s~n", [Line, Mod:format_error(Msg)])
+				  end,
+				  W)
+			end,
+			M#module.warnings)
+	      end,
+	      ErrMods),
+	    error
+    end.
 
 %%%===================================================================
 %%% Internal functions
