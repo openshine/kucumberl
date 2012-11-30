@@ -28,11 +28,11 @@ or (if you want to see examples with failures)
 
     $ ./kucumberl
 
-### How can i use kucumberl in my erlang project? <a name="kucumberlmyproject"></a>
+### How can I use kucumberl in my erlang project? <a name="kucumberlmyproject"></a>
 
 You can copy the kucumberl binary generated when you excute 'make' to your project folder. kucumberl is a self-contained Erlang script.
 
-### How can i create my first test? <a name="quicktutorial"></a>
+### How can I create my first test? <a name="quicktutorial"></a>
 
 Copy the kucumberl script to your project folder
 
