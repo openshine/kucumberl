@@ -56,14 +56,22 @@ main(Args) ->
 
 	    kucumberl_log:set_color(Conf#conf.color),
 
-	    case Conf#conf.task of
-		help ->
-		    usage(OptSpecList);
-		list ->
-		    task(list, Conf);
-		runtests ->
-		    task(runtests, Conf);
-		_ -> ignoreit
+	    Result =
+		case Conf#conf.task of
+		    help ->
+			usage(OptSpecList),
+			ok;
+		    list ->
+			task(list, Conf);
+		    runtests ->
+			task(runtests, Conf);
+		    _ -> ignoreit
+		end,
+	    case Result of
+		error ->
+		    kucumberl_utils:exit(1);
+		_ ->
+		    ignoreit
 	    end;
         {error, {_Reason, _Data}} ->
             usage(OptSpecList)
@@ -178,7 +186,8 @@ task(list, Conf) ->
 			  ]),
 		ok
 	end,
-    lists:foreach (PrintFeature, Conf#conf.features);
+    lists:foreach (PrintFeature, Conf#conf.features),
+    ok;
 
 task(runtests, Conf) ->
     Features = lists:foldl(
@@ -193,7 +202,13 @@ task(runtests, Conf) ->
 	    lists:foldl(fun(F, L) -> L ++ [kucumberl_feature:run(F)] end,
 			[],
 			Features),
-	    kucumberl_log:print_stats();
+	    kucumberl_log:print_stats(),
+	    
+	    ScnFailed = length(ets:match(kctx, {{'$1', status, '$2', '$3'}, failed})),
+	    case ScnFailed of
+		0 -> ok;
+		_ -> error
+	    end;
 	error -> error
     end.
 
