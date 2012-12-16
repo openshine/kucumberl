@@ -77,8 +77,6 @@ parse_lines(Ctx, [Line|Rest]) ->
 		   process_stage({step, then_step}, Ctx1, Info);
 	       {and_step,     Info} ->
 		   process_stage({step, and_step}, Ctx1, Info);
-	       {tags,         Info} ->
-		   process_stage(tags, Ctx1, Info);
 	       {table_row,    Info} ->
 		   process_stage(table_row, Ctx1, Info);
 	       {ml_text,      Info} ->
@@ -100,7 +98,6 @@ process_line(Line) ->
 			scenario,
 			scenario_out,
 			so_example,
-			tags,
 			gwta_step,
 			table_row,
 			ml_text,
@@ -163,14 +160,6 @@ match_line(gwta_step, Line) ->
 		[global,{capture, [1,3], list},unicode]) of
 	{match,[[STEP, VALUE]]} -> {ok, {list_to_atom(string:to_lower(STEP ++ "_step")),
 					 VALUE}};
-	_ -> pass
-    end;
-match_line(tags, Line) ->
-    case re:run(Line,
-		"^\s*\@(?<VALUE>.+)$",
-		[global,{capture, [1], list},unicode]) of
-	{match,[[[]]]} -> pass;
-	{match,[[VALUE]]} -> {ok, {tags, string:tokens(VALUE, "@\s")}};
 	_ -> pass
     end;
 match_line(table_row, Line) ->
@@ -291,13 +280,6 @@ process_stage({step, S}, Ctx, Info) ->
 	[feature, scenario_out|R] -> store_step({scenario_out, S, R}, Ctx1, Info);
 	_ -> {error, format_perror(Ctx, "Can't use step's here", [])}
     end;
-process_stage(tags, Ctx, Info) ->
-    case scope_get(Ctx) of
-	[] ->
-	    Ctx#fparser_ctx{tags = Ctx#fparser_ctx.tags ++ Info};
-	[feature|_] ->
-	    Ctx#fparser_ctx{tags = Ctx#fparser_ctx.tags ++ Info}
-    end;
 process_stage(table_row, Ctx, Info) ->
     case scope_get(Ctx) of
 	[feature, scenario_out, so_example] ->
@@ -397,7 +379,16 @@ process_stage(str, Ctx, Info) ->
 		    NewResult = Ctx#fparser_ctx.result#feature{scenarios = lists:reverse([NewScenario] ++ SRest)},
 		    Ctx#fparser_ctx{result = NewResult}
 	    end;
-	_ -> Ctx
+	_ ->
+	    case re:run(Info,
+			"^\s*\@(?<VALUE>.+)$",
+			[global,{capture, [1], list},unicode]) of
+		{match,[[[]]]} -> Ctx;
+		{match,[[VALUE]]} ->
+		    Tags = string:tokens(VALUE, "@\s"),
+		    Ctx#fparser_ctx{tags = Ctx#fparser_ctx.tags ++ Tags};
+		_ -> Ctx
+	    end
     end;
 process_stage(_, Ctx, _Info) ->
     Ctx.
