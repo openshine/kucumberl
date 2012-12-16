@@ -9,4 +9,4 @@ clean:
 	@./rebar clean
 
 test:
-	@./kucumberl -s fail.feature
+	@./kucumberl -t ~@fail
