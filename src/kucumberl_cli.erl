@@ -150,7 +150,11 @@ store_features(Conf, ID, [File|R]) ->
 	no  ->
 	    case kucumberl_parser:parse(File) of
 		{ok, F} ->
-		    F1 = F#feature{id = ID},
+		    F1 = case Conf#conf.tags of
+			     [[]] -> F#feature{id = ID};
+			     Tags ->
+				 disable_not_tagged_scenarios(F#feature{id = ID}, Tags)
+			 end,
 		    NextID = ID + 1,
 		    NewConf = Conf#conf{features = Conf#conf.features ++ [F1]};
 		{error, Reason} ->
@@ -164,6 +168,53 @@ store_features(Conf, ID, [File|R]) ->
     end,
     store_features(NewConf, NextID, R);
 store_features(Conf, _, []) -> Conf.
+
+
+disable_if_not_tagged_scenario(F, S, Tags) ->
+    ScnTags = F#feature.tags ++ S#scenario.tags,
+    R =
+	lists:foldl(
+	  fun (TagGroup, Acc) ->
+		  R2 = lists:foldl(
+			 fun (Tag, Acc1) ->
+				 [T] = string:tokens(Tag, "~@"),
+				 case re:run(Tag, "~(@|).+") of
+				     nomatch ->
+					 Acc1 ++ [lists:member(T, ScnTags)];
+				     _ ->
+					 case lists:member(T, ScnTags) of
+					     true ->
+						 Acc1 ++ [false];
+					     false ->
+						 Acc1 ++ [true]
+					 end
+				 end
+			 end,
+			 [],
+			 TagGroup),
+		  Acc ++ [lists:member(true, R2)]
+	  end,
+	  [],
+	  Tags),
+
+    case lists:member(false, R) of
+	true ->
+	    S#scenario{enabled = false};
+	false ->
+	    S
+    end.
+
+disable_not_tagged_scenarios(F, Tags) ->
+    NewScenarios =
+	lists:foldl(
+		fun (S, ScnList) ->
+			S1 = disable_if_not_tagged_scenario(F, S, Tags),
+			ScnList ++  [S1]
+		end,
+		[],
+		F#feature.scenarios),
+
+    F#feature{scenarios = NewScenarios}.
 
 skip_feature(Conf, F) ->
     S = lists:foldl(
@@ -202,11 +253,14 @@ task(runtests, Conf) ->
     		 end, [], Conf#conf.features),
     case kucumberl_feature_code:check_errors(Features) of
 	ok ->
-	    lists:foldl(fun(F, L) -> L ++ [kucumberl_feature:run(F)] end,
-			[],
-			Features),
+	    lists:foldl(
+	      fun(F, L) ->
+		      L ++ [kucumberl_feature:run(F)]
+	      end,
+	      [],
+	      Features),
 	    kucumberl_log:print_stats(),
-	    
+
 	    ScnFailed = length(ets:match(kctx, {{'$1', status, '$2', '$3'}, failed})),
 	    case ScnFailed of
 		0 -> ok;
@@ -214,4 +268,3 @@ task(runtests, Conf) ->
 	    end;
 	error -> error
     end.
-
