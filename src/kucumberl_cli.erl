@@ -26,6 +26,7 @@
 -record(conf, {verbose = false,
 	       path_a = [],
 	       path_z = [],
+	       tags = [],
 	       skip = [],
 	       rskip = [],
 	       fdir = [],
@@ -95,6 +96,7 @@ option_spec_list() ->
      {verbose,     $v,        undefined,     boolean,               "Be verbose about what gets done"},
      {fdir,        $d,        undefined,     string,                "Feature's directory"},
      {list,        $l,        "list",        undefined,             "List features"},
+     {tags,        $t,        "tags",        {string, ""},          "Only execute the features or scenarios with tags matching"},
      {skip,        $s,        "skip",        string,                "Skip feature"},
      {rskip,       $r,        "rskip",       string,                "Skip features using regexp"},
      {path_a,      $a,        "pa",          string,                "Adds the specified directories to the beginning of the code path"},
@@ -108,6 +110,7 @@ store_conf(Conf, [I|Rest]) ->
 	help         -> NewConf = Conf#conf{task=help};
 	list         -> NewConf = Conf#conf{task=list};
 	verbose      -> NewConf = Conf#conf{verbose=true};
+	{tags, S}    -> NewConf = Conf#conf{tags = Conf#conf.tags ++ [string:tokens(S, ",")]};
 	{skip, S}    -> NewConf = Conf#conf{skip = Conf#conf.skip ++ [S ++ "$"]};
 	{rskip, S}   -> NewConf = Conf#conf{rskip = Conf#conf.rskip ++ [S]};
 	{path_a, S}  -> NewConf = Conf#conf{path_a = Conf#conf.path_a ++ [S]};
@@ -147,7 +150,11 @@ store_features(Conf, ID, [File|R]) ->
 	no  ->
 	    case kucumberl_parser:parse(File) of
 		{ok, F} ->
-		    F1 = F#feature{id = ID},
+		    F1 = case Conf#conf.tags of
+			     [[]] -> F#feature{id = ID};
+			     Tags ->
+				 disable_not_tagged_scenarios(F#feature{id = ID}, Tags)
+			 end,
 		    NextID = ID + 1,
 		    NewConf = Conf#conf{features = Conf#conf.features ++ [F1]};
 		{error, Reason} ->
@@ -161,6 +168,53 @@ store_features(Conf, ID, [File|R]) ->
     end,
     store_features(NewConf, NextID, R);
 store_features(Conf, _, []) -> Conf.
+
+
+disable_if_not_tagged_scenario(F, S, Tags) ->
+    ScnTags = F#feature.tags ++ S#scenario.tags,
+    R =
+	lists:foldl(
+	  fun (TagGroup, Acc) ->
+		  R2 = lists:foldl(
+			 fun (Tag, Acc1) ->
+				 [T] = string:tokens(Tag, "~@"),
+				 case re:run(Tag, "~(@|).+") of
+				     nomatch ->
+					 Acc1 ++ [lists:member(T, ScnTags)];
+				     _ ->
+					 case lists:member(T, ScnTags) of
+					     true ->
+						 Acc1 ++ [false];
+					     false ->
+						 Acc1 ++ [true]
+					 end
+				 end
+			 end,
+			 [],
+			 TagGroup),
+		  Acc ++ [lists:member(true, R2)]
+	  end,
+	  [],
+	  Tags),
+
+    case lists:member(false, R) of
+	true ->
+	    S#scenario{enabled = false};
+	false ->
+	    S
+    end.
+
+disable_not_tagged_scenarios(F, Tags) ->
+    NewScenarios =
+	lists:foldl(
+		fun (S, ScnList) ->
+			S1 = disable_if_not_tagged_scenario(F, S, Tags),
+			ScnList ++  [S1]
+		end,
+		[],
+		F#feature.scenarios),
+
+    F#feature{scenarios = NewScenarios}.
 
 skip_feature(Conf, F) ->
     S = lists:foldl(
@@ -199,11 +253,14 @@ task(runtests, Conf) ->
     		 end, [], Conf#conf.features),
     case kucumberl_feature_code:check_errors(Features) of
 	ok ->
-	    lists:foldl(fun(F, L) -> L ++ [kucumberl_feature:run(F)] end,
-			[],
-			Features),
+	    lists:foldl(
+	      fun(F, L) ->
+		      L ++ [kucumberl_feature:run(F)]
+	      end,
+	      [],
+	      Features),
 	    kucumberl_log:print_stats(),
-	    
+
 	    ScnFailed = length(ets:match(kctx, {{'$1', status, '$2', '$3'}, failed})),
 	    case ScnFailed of
 		0 -> ok;
@@ -211,4 +268,3 @@ task(runtests, Conf) ->
 	    end;
 	error -> error
     end.
-

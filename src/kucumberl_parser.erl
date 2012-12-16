@@ -23,7 +23,7 @@
 %% API
 -export([parse/1]).
 
--record(fparser_ctx, {line = 0, scope = [], result}).
+-record(fparser_ctx, {line = 0, scope = [], tags = [], result}).
 
 %%%===================================================================
 %%% API
@@ -208,7 +208,9 @@ process_stage(feature, Ctx, Info) ->
     case scope_get(Ctx) of
 	[] ->
 	    Ctx1 = scope_push(Ctx, feature),
-	    Ctx1#fparser_ctx{result = Ctx1#fparser_ctx.result#feature{desc = Info}};
+	    Ctx1#fparser_ctx{result = Ctx1#fparser_ctx.result#feature{desc = Info,
+								      tags = Ctx1#fparser_ctx.tags},
+			     tags = []};
 	_  ->
 	    {error, format_perror(Ctx, "Can't use 'feature' keyword here", [])}
     end;
@@ -231,9 +233,13 @@ process_stage(scenario, Ctx, Info) ->
 	[feature|_] ->
 	    Ctx1 = scope_set(Ctx, [feature, scenario]),
 	    Scenario = #scenario{type=scenario,
-				 desc = Info},
+				 desc = Info,
+				 tags = Ctx1#fparser_ctx.tags
+				},
 	    NewSceneriosList = Ctx1#fparser_ctx.result#feature.scenarios ++ [Scenario],
-	    Ctx1#fparser_ctx{result = Ctx1#fparser_ctx.result#feature{scenarios=NewSceneriosList}};
+	    Ctx1#fparser_ctx{result = Ctx1#fparser_ctx.result#feature{scenarios=NewSceneriosList},
+			     tags = []
+			    };
 	_  ->
 	    {error, format_perror(Ctx, "Can't use 'scenario' keyword here", [])}
     end;
@@ -242,9 +248,12 @@ process_stage(scenario_out, Ctx, Info) ->
 	[feature|_] ->
 	    Ctx1 = scope_set(Ctx, [feature, scenario_out]),
 	    Scenario = #scenario{type=scenario_out,
-				 desc = Info},
+				 desc = Info,
+				 tags = Ctx1#fparser_ctx.tags},
 	    NewSceneriosList = Ctx1#fparser_ctx.result#feature.scenarios ++ [Scenario],
-	    Ctx1#fparser_ctx{result = Ctx1#fparser_ctx.result#feature{scenarios=NewSceneriosList}};
+	    Ctx1#fparser_ctx{result = Ctx1#fparser_ctx.result#feature{scenarios=NewSceneriosList},
+			     tags = []
+			    };
 	_  ->
 	    {error, format_perror(Ctx, "Can't use 'scenario Outline' keyword here", [])}
     end;
@@ -264,10 +273,11 @@ process_stage(so_example, Ctx, _Info) ->
     end;
 
 process_stage({step, S}, Ctx, Info) ->
-    case scope_get(Ctx) of
-	[feature, background|R] -> store_step({background, S, R}, Ctx, Info);
-	[feature, scenario|R] -> store_step({scenario, S, R}, Ctx, Info);
-	[feature, scenario_out|R] -> store_step({scenario_out, S, R}, Ctx, Info);
+    Ctx1 = Ctx#fparser_ctx{tags = []},
+    case scope_get(Ctx1) of
+	[feature, background|R] -> store_step({background, S, R}, Ctx1, Info);
+	[feature, scenario|R] -> store_step({scenario, S, R}, Ctx1, Info);
+	[feature, scenario_out|R] -> store_step({scenario_out, S, R}, Ctx1, Info);
 	_ -> {error, format_perror(Ctx, "Can't use step's here", [])}
     end;
 process_stage(table_row, Ctx, Info) ->
@@ -369,7 +379,16 @@ process_stage(str, Ctx, Info) ->
 		    NewResult = Ctx#fparser_ctx.result#feature{scenarios = lists:reverse([NewScenario] ++ SRest)},
 		    Ctx#fparser_ctx{result = NewResult}
 	    end;
-	_ -> Ctx
+	_ ->
+	    case re:run(Info,
+			"^\s*\@(?<VALUE>.+)$",
+			[global,{capture, [1], list},unicode]) of
+		{match,[[[]]]} -> Ctx;
+		{match,[[VALUE]]} ->
+		    Tags = string:tokens(VALUE, "@\s"),
+		    Ctx#fparser_ctx{tags = Ctx#fparser_ctx.tags ++ Tags};
+		_ -> Ctx
+	    end
     end;
 process_stage(_, Ctx, _Info) ->
     Ctx.

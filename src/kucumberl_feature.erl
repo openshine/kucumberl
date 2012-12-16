@@ -28,23 +28,51 @@
 %%%===================================================================
 
 run(Feature) ->
-    kucumberl_feature_code:load(Feature),
-    kucumberl_log:init_feature(Feature),
-    F = run_feature(Feature),
-    kucumberl_log:end_feature(),
-    kucumberl_feature_code:unload(F).
+    case is_enabled_feature(Feature) of
+	true ->
+	    kucumberl_feature_code:load(Feature),
+	    kucumberl_log:init_feature(Feature),
+	    F = run_feature(Feature),
+	    kucumberl_log:end_feature(),
+	    kucumberl_feature_code:unload(F);
+	false ->
+	    Feature
+    end.
 
 %%%===================================================================
 %%% Internal functions
 %%%===================================================================
 
+is_enabled_feature(Feature) ->
+    EnabledScns =
+	lists:foldl(
+	  fun (ScnID, Acc) ->
+		  Scn = kucumberl_feature_scn:get_scenario(Feature, ScnID),
+		  case Scn#scenario.enabled of
+		      true -> Acc + 1;
+		      false -> Acc
+		  end
+	  end,
+	  0,
+	  lists:seq(1, length(Feature#feature.scenarios))),
+    case EnabledScns of
+	0 -> false;
+	_ -> true
+    end.
+
 run_feature(Feature) ->
     lists:foldl(
       fun(ScnID, F) ->
-	      kucumberl_log:init_scenario(ScnID),
-	      F = kucumberl_feature_scn:run(F, ScnID),
-	      kucumberl_log:end_scenario(),
-	      F
+	      Scn = kucumberl_feature_scn:get_scenario(Feature, ScnID),
+	      case Scn#scenario.enabled of
+		  true ->
+		      kucumberl_log:init_scenario(ScnID),
+		      F = kucumberl_feature_scn:run(F, ScnID),
+		      kucumberl_log:end_scenario(),
+		      F;
+		  false ->
+		      F
+	      end
       end,
       Feature,
       lists:seq(1, length(Feature#feature.scenarios))).
