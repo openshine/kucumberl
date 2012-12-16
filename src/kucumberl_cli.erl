@@ -26,6 +26,7 @@
 -record(conf, {verbose = false,
 	       path_a = [],
 	       path_z = [],
+	       tags = [],
 	       skip = [],
 	       rskip = [],
 	       fdir = [],
@@ -95,6 +96,7 @@ option_spec_list() ->
      {verbose,     $v,        undefined,     boolean,               "Be verbose about what gets done"},
      {fdir,        $d,        undefined,     string,                "Feature's directory"},
      {list,        $l,        "list",        undefined,             "List features"},
+     {tags,        $t,        "tags",        {string, ""},          "Only execute the features or scenarios with tags matching"},
      {skip,        $s,        "skip",        string,                "Skip feature"},
      {rskip,       $r,        "rskip",       string,                "Skip features using regexp"},
      {path_a,      $a,        "pa",          string,                "Adds the specified directories to the beginning of the code path"},
@@ -108,6 +110,7 @@ store_conf(Conf, [I|Rest]) ->
 	help         -> NewConf = Conf#conf{task=help};
 	list         -> NewConf = Conf#conf{task=list};
 	verbose      -> NewConf = Conf#conf{verbose=true};
+	{tags, S}    -> NewConf = Conf#conf{tags = Conf#conf.tags ++ [string:tokens(S, ",")]};
 	{skip, S}    -> NewConf = Conf#conf{skip = Conf#conf.skip ++ [S ++ "$"]};
 	{rskip, S}   -> NewConf = Conf#conf{rskip = Conf#conf.rskip ++ [S]};
 	{path_a, S}  -> NewConf = Conf#conf{path_a = Conf#conf.path_a ++ [S]};
