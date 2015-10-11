@@ -173,15 +173,14 @@ store_hook_funcs(F) ->
 	    Func =
 		fun (I, F1) ->
 			case I of
-			    {function,_,S,0,_}
-			      when S =:= setup;
-				   S =:= teardown ->
+			    {function,_,S,N,_}
+			      when (S =:= setup andalso N =:= 0) orelse (S =:= teardown andalso (N =:= 0 orelse N =:= 1)) ->
 				case S of
 				    setup ->
-					FC = F1#feature.fcode#feature_code{setup_mod = StepModule},
+					FC = F1#feature.fcode#feature_code{setup_mod = {StepModule, N}},
 					F1#feature{fcode = FC};
 				    teardown ->
-					FC = F1#feature.fcode#feature_code{teardown_mod = StepModule},
+					FC = F1#feature.fcode#feature_code{teardown_mod = {StepModule, N}},
 					F1#feature{fcode = FC}
 				end;
 			    _ -> F1

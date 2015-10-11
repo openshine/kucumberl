@@ -40,4 +40,5 @@ Feature: Editor features
     Examples:
       | input_1   | input_2   | output              |
       | roberto   | openshine | robertoopenshine    |
+      | telemaco  | gnome     | telemacognome       |
 
