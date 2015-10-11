@@ -260,16 +260,16 @@ process_stage(scenario_out, Ctx, Info) ->
 process_stage(so_example, Ctx, _Info) ->
     case scope_get(Ctx) of
 	[feature, scenario_out] ->
-	    {error, format_perror(Ctx, "Can't use 'Example' keyword here", [])};
+	    {error, format_perror(Ctx, "Can't use 'Examples' keyword here", [])};
 	[feature, scenario_out|R] ->
 	    case R of
-		[] -> {error, format_perror(Ctx, "Can't use 'Example' keyword here", [])};
-		[so_example] -> {error, format_perror(Ctx, "Can't use 'Example' keyword here", [])}; 
+		[] -> {error, format_perror(Ctx, "Can't use 'Examples' keyword here", [])};
+		[so_example] -> {error, format_perror(Ctx, "Can't use 'Examples' keyword here", [])};
 		_  ->
 		    scope_set(Ctx, [feature, scenario_out, so_example])
 	    end;
 	_ ->
-	    {error, format_perror(Ctx, "Can't use 'Example' keyword here", [])}
+	    {error, format_perror(Ctx, "Can't use 'Examples' keyword here", [])}
     end;
 
 process_stage({step, S}, Ctx, Info) ->

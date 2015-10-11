@@ -178,11 +178,18 @@ prepare_act(F, ScnID, EID, Act) ->
 		       E ->
 			   lists:foldl(
 			     fun ({K,V}, A) ->
-				     NewDesc = re:replace(A#action.desc,
-							  "<" ++ K ++ ">",
-							  V,
-							  [{return, list}]),
-				     A#action{desc = NewDesc}
+             NewText = re:replace(A#action.text,
+               "<" ++ K ++ ">",
+               V,
+               [{return, list}]),
+             NewTable = lists:map(fun(Elems) ->
+               lists:map(fun(Elem) -> re:replace(Elem, "<" ++ K ++ ">", V, [{return, list}]) end, Elems)
+             end, A#action.table),
+             NewDesc = re:replace(A#action.desc,
+               "<" ++ K ++ ">",
+               V,
+               [{return, list}]),
+             A#action{desc = NewDesc, text = NewText, table = NewTable}
 			     end, Act, E)
 		   catch
 		       _ -> Act

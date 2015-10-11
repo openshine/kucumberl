@@ -14,7 +14,7 @@ given ("a users this table like that:", _State, [Table]) ->
 'when' ("I press table2text", State, []) ->
     Text = lists:foldl(
 	     fun ([Name, Org], Str) ->
-		     Str ++ Name ++ "|" ++ Org ++ "\n"
+		     Str ++ Name ++ Org ++ "\n"
 	     end, "", State),
     {ok, Text}.
 
