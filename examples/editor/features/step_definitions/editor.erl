@@ -1,6 +1,6 @@
 -module(editor).
 
--export([given/3, 'when'/3, then/3]).
+-export([given/3, 'when'/3, then/3, setup/0, teardown/1]).
 
 given ("a text like that:", _State, [Text]) ->
     {ok, Text};
@@ -14,7 +14,7 @@ given ("a users this table like that:", _State, [Table]) ->
 'when' ("I press table2text", State, []) ->
     Text = lists:foldl(
 	     fun ([Name, Org], Str) ->
-		     Str ++ Name ++ "|" ++ Org ++ "\n"
+		     Str ++ Name ++ Org ++ "\n"
 	     end, "", State),
     {ok, Text}.
 
@@ -28,3 +28,10 @@ then ("i've a text like that:", State, [Text]) ->
 	true -> {ok, Text};
 	false -> {failed, "text not match"}
     end.
+
+
+setup() ->
+  [].
+
+teardown(__State) ->
+  ok.

@@ -30,7 +30,7 @@
 run(F, {setup, ScnID, EID}) ->
     State = case F#feature.fcode#feature_code.setup_mod of
 		[] -> [];
-		Mod -> Mod:setup()
+		{Mod, 0} -> Mod:setup()
 	    end,
 
     ets:insert(kctx, {{F#feature.id, state, ScnID, EID}, State}),
@@ -38,9 +38,11 @@ run(F, {setup, ScnID, EID}) ->
     ets:insert(kctx, {{F#feature.id, setup, ScnID, EID}, ok}),
     F;
 run(F, {teardown, ScnID, EID}) ->
+		[[OldState]] = ets:match(kctx, {{F#feature.id, state, ScnID, EID}, '$1'}),
     State = case F#feature.fcode#feature_code.teardown_mod of
 		[] -> ok;
-		Mod -> Mod:teardown()
+		{Mod, 0} -> Mod:teardown();
+		{Mod, 1} -> Mod:teardown(OldState)
 	    end,
     ets:insert(kctx, {{F#feature.id, state,    ScnID, EID}, State}),
     ets:insert(kctx, {{F#feature.id, teardown, ScnID, EID}, ok}),
@@ -178,11 +180,18 @@ prepare_act(F, ScnID, EID, Act) ->
 		       E ->
 			   lists:foldl(
 			     fun ({K,V}, A) ->
-				     NewDesc = re:replace(A#action.desc,
-							  "<" ++ K ++ ">",
-							  V,
-							  [{return, list}]),
-				     A#action{desc = NewDesc}
+             NewText = re:replace(A#action.text,
+               "<" ++ K ++ ">",
+               V,
+               [{return, list}]),
+             NewTable = lists:map(fun(Elems) ->
+               lists:map(fun(Elem) -> re:replace(Elem, "<" ++ K ++ ">", V, [{return, list}]) end, Elems)
+             end, A#action.table),
+             NewDesc = re:replace(A#action.desc,
+               "<" ++ K ++ ">",
+               V,
+               [{return, list}]),
+             A#action{desc = NewDesc, text = NewText, table = NewTable}
 			     end, Act, E)
 		   catch
 		       _ -> Act

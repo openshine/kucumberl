@@ -23,8 +23,22 @@ Feature: Editor features
     When I press table2text
     Then i've a text like that:
       """
-      roberto|openshine
-      telemaco|gnome
+      robertoopenshine
+      telemacognome
       
       """
+  Scenario Outline: Table2Text
+    Given a users this table like that:
+      | <input_1>  | <input_2> |
+    When I press table2text
+    Then i've a text like that:
+      """
+      <output>
+
+      """
+
+    Examples:
+      | input_1   | input_2   | output              |
+      | roberto   | openshine | robertoopenshine    |
+      | telemaco  | gnome     | telemacognome       |
 
